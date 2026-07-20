@@ -120,26 +120,29 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
         }
 
         // 3. Render Area Footer
-        const footerY = 600;
-        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-        ctx.fillRect(padding, footerY, photoW, 85);
+        const footerY = 1880;
+
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        ctx.fillRect(padding, footerY, photoW, 180);
 
         // 4. Gambar Aset Logo
         try {
           const logoImg = await loadImage(currentFrame.logoPath);
-          const logoH = 84;
+
+          const logoH = 70;
           const logoW = logoImg.width * (logoH / logoImg.height);
           const logoX = (canvas.width - logoW) / 2;
-          ctx.drawImage(logoImg, logoX, footerY + 12, logoW, logoH);
+
+          ctx.drawImage(logoImg, logoX, footerY + 20, logoW, logoH);
         } catch (e) {
           console.log("Logo asset skipped/not found");
         }
 
         // 5. Cetak Teks Info Booth
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 33px monospace";
+        ctx.font = "bold 26px monospace";
         ctx.textAlign = "center";
-        ctx.fillText("IT CLUB PHOTOBOOTH", canvas.width / 2, footerY + 62);
+        ctx.fillText("IT CLUB PHOTOBOOTH", canvas.width / 2, footerY + 120);
 
         // 6. Dapatkan Base64 Kompresi Menengah untuk Preview & Payload Ringan
         const base64Image = canvas.toDataURL("image/png");
