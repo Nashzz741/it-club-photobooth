@@ -62,8 +62,8 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
     const drawAndUploadCanvas = async () => {
       try {
         const canvas = document.createElement("canvas");
-        canvas.width = 400;
-        canvas.height = 720;
+        canvas.width = 1200;
+        canvas.height = 2160;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
@@ -72,11 +72,11 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
         ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
         // 2. Gambar 3 Kotak Foto Hasil jepretan
-        const padding = 20;
-        const gap = 10;
+        const padding = 60;
+        const gap = 30;
         const photoW = canvas.width - padding * 2;
-        const photoH = 175;
-        const startY = 40;
+        const photoH = 525;
+        const startY = 120;
 
         for (let i = 0; i < 3; i++) {
           const currentY = startY + i * (photoH + gap);
@@ -127,7 +127,7 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
         // 4. Gambar Aset Logo
         try {
           const logoImg = await loadImage(currentFrame.logoPath);
-          const logoH = 28;
+          const logoH = 84;
           const logoW = logoImg.width * (logoH / logoImg.height);
           const logoX = (canvas.width - logoW) / 2;
           ctx.drawImage(logoImg, logoX, footerY + 12, logoW, logoH);
@@ -137,12 +137,12 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
 
         // 5. Cetak Teks Info Booth
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 11px monospace";
+        ctx.font = "bold 33px monospace";
         ctx.textAlign = "center";
         ctx.fillText("IT CLUB PHOTOBOOTH", canvas.width / 2, footerY + 62);
 
         // 6. Dapatkan Base64 Kompresi Menengah untuk Preview & Payload Ringan
-        const base64Image = canvas.toDataURL("image/jpeg", 0.75);
+        const base64Image = canvas.toDataURL("image/png");
         setPreviewBase64(base64Image);
 
         // 7. Kirim ke API Route /api/upload
@@ -181,7 +181,7 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
   const downloadImage = () => {
     if (!previewBase64) return;
     const link = document.createElement("a");
-    link.download = `spark-booth-${config.frameStyle}.jpg`;
+    link.download = `It-Club-Photobooth-${config.frameStyle}.png`;
     link.href = previewBase64;
     link.click();
   };
@@ -229,24 +229,6 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
             </div>
           )}
         </div>
-
-        {!isGenerating && downloadUrl && (
-          <>
-            <a
-              href={downloadUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-cyan-400 hover:text-cyan-300 underline text-[10px] break-all text-center max-w-xs"
-            >
-              Open Download Link
-            </a>
-
-            <p className="mt-3 text-[10px] text-gray-400 text-center max-w-xs">
-              Scan QR menggunakan kamera HP untuk membuka hasil photobooth lalu
-              download gambar kualitas asli.
-            </p>
-          </>
-        )}
 
         {/* PANEL KANAN: PREVIEW HASIL KANVAS STRIP */}
         <div className="flex-none flex flex-col items-center justify-start w-72">
