@@ -203,31 +203,50 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
       {/* Main Layout Area */}
       <div className="max-w-5xl w-full mx-auto flex flex-col md:flex-row gap-12 items-stretch justify-center z-10 overflow-hidden flex-1 pb-24">
         {/* PANEL KIRI: QR CODE HANDLER */}
-        <div className="flex-1 flex flex-col items-center justify-center bg-black/30 border border-gray-800 rounded-lg p-6 min-w-0 max-h-[55vh]">
-          <p className="text-[11px] text-arcade-magenta tracking-wider mb-4 text-center">
-            {isGenerating
-              ? "// UPLOADING TO STORAGE..."
-              : "// SCAN QR TO DOWNLOAD"}
-          </p>
-          <div className="bg-white p-3 rounded-md shadow-[0_0_20px_rgba(255,255,255,0.1)] mb-4 flex items-center justify-center min-w-[174px] min-h-[174px]">
-            {isGenerating ? (
-              <div className="w-[150px] h-[150px] bg-neutral-950 flex items-center justify-center text-[10px] text-arcade-blue font-mono animate-pulse rounded text-center px-4">
-                GENERATING CLOUD LINK...
-              </div>
-            ) : downloadUrl ? (
-              <QRCodeSVG value={downloadUrl} size={160} level="M" />
-            ) : (
-              <span className="text-red-500 text-[10px] font-bold text-center px-2">
-                QR INITIALIZATION ERROR
-              </span>
-            )}
-          </div>
-          <p className="text-[9px] text-gray-400 font-mono text-center max-w-xs">
-            {isGenerating
-              ? "Menyinkronkan data biner dengan server storage Vercel..."
-              : "Scan QR Code menggunakan smartphone pengunjung untuk menyimpan file cetak asli langsung ke perangkat mereka."}
-          </p>
+        <div className="bg-white rounded-2xl p-6 shadow-2xl mb-5 flex flex-col items-center justify-center border-4 border-cyan-400">
+          {isGenerating ? (
+            <div className="w-[230px] h-[230px] rounded-xl bg-neutral-900 flex items-center justify-center text-center text-xs font-mono text-cyan-400 animate-pulse">
+              GENERATING...
+            </div>
+          ) : downloadUrl ? (
+            <>
+              <QRCodeSVG
+                value={downloadUrl}
+                size={230}
+                level="H"
+                includeMargin
+                bgColor="#FFFFFF"
+                fgColor="#000000"
+              />
+
+              <p className="mt-5 text-[11px] font-bold text-black tracking-wider">
+                SCAN TO DOWNLOAD
+              </p>
+            </>
+          ) : (
+            <div className="text-red-500 font-bold text-center text-xs">
+              FAILED TO GENERATE QR
+            </div>
+          )}
         </div>
+
+        {!isGenerating && downloadUrl && (
+          <>
+            <a
+              href={downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-400 hover:text-cyan-300 underline text-[10px] break-all text-center max-w-xs"
+            >
+              Open Download Link
+            </a>
+
+            <p className="mt-3 text-[10px] text-gray-400 text-center max-w-xs">
+              Scan QR menggunakan kamera HP untuk membuka hasil photobooth lalu
+              download gambar kualitas asli.
+            </p>
+          </>
+        )}
 
         {/* PANEL KANAN: PREVIEW HASIL KANVAS STRIP */}
         <div className="flex-none flex flex-col items-center justify-start w-72">

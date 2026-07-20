@@ -5,23 +5,47 @@ export async function POST(request: Request) {
   try {
     const { imageBase64 } = await request.json();
 
-    // Hapus header base64 jika ada (e.g., data:image/jpeg;base64,)
+    if (!imageBase64) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Image tidak ditemukan",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+
     const buffer = Buffer.from(base64Data, "base64");
 
-    // Proses upload langsung ke Vercel Blob Storage kamu
     const blob = await put(`photobooth/${Date.now()}.jpg`, buffer, {
       access: "public",
       contentType: "image/jpeg",
     });
 
-    // Balikin URL publik gambar yang pendek ke frontend
-    return NextResponse.json({ url: blob.url });
+    const downloadUrl = "downloadUrl" in blob ? blob.downloadUrl : blob.url;
+
+    console.log("Blob URL:", blob.url);
+    console.log("Download URL:", downloadUrl);
+
+    return NextResponse.json({
+      success: true,
+      url: downloadUrl,
+    });
   } catch (error) {
-    console.error("Error di API Upload:", error);
+    console.error("UPLOAD ERROR:", error);
+
     return NextResponse.json(
-      { error: "Gagal mengunggah gambar" },
-      { status: 500 },
+      {
+        success: false,
+        error: "Upload gagal",
+      },
+      {
+        status: 500,
+      },
     );
   }
 }
