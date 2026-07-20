@@ -22,8 +22,8 @@ interface FrameStyleConfig {
 }
 
 export default function Result({ photos = [], config, onReset }: ResultProps) {
-  const [downloadUrl, setDownloadUrl] = useState<string>(""); // Menyimpan URL publik Vercel Blob
-  const [previewBase64, setPreviewBase64] = useState<string>(""); // Untuk preview instan di layar laptop
+  const [downloadUrl, setDownloadUrl] = useState<string>("");
+  const [previewBase64, setPreviewBase64] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState<boolean>(true);
 
   const frameConfigs: Record<string, FrameStyleConfig> = {
@@ -63,7 +63,7 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
       try {
         const canvas = document.createElement("canvas");
         canvas.width = 400;
-        canvas.height = 720; // Rasio pas 3 foto teratur vertikal
+        canvas.height = 720;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
@@ -145,24 +145,32 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
         const base64Image = canvas.toDataURL("image/jpeg", 0.75);
         setPreviewBase64(base64Image);
 
-        // 7. Kirim ke API Route /api/upload yang sudah disinkronkan ke Vercel Blob
+        // 7. Kirim ke API Route /api/upload
         const response = await fetch("/api/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageBase64: base64Image }),
         });
 
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const resData = await response.json();
 
         if (resData.url) {
-          setDownloadUrl(resData.url); // Link publik berformat https://...
+          setDownloadUrl(resData.url);
         } else {
-          throw new Error("Gagal mendapatkan link penyimpanan cloud");
+          throw new Error(
+            resData.error || "Gagal mendapatkan link penyimpanan cloud",
+          );
         }
 
         setIsGenerating(false);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Proses pembuatan/unggah strip gagal:", err);
+        // Alert ini bakal ngebantu banget nyari tau error pastinya kenapa QR gagal terbuat
+        alert("🚨 BOOTH ERROR: " + (err.message || err));
         setIsGenerating(false);
       }
     };
@@ -174,7 +182,7 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
     if (!previewBase64) return;
     const link = document.createElement("a");
     link.download = `spark-booth-${config.frameStyle}.jpg`;
-    link.href = previewBase64; // Download instan lokal via mesin utama booth
+    link.href = previewBase64;
     link.click();
   };
 
@@ -207,10 +215,9 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
                 GENERATING CLOUD LINK...
               </div>
             ) : downloadUrl ? (
-              /* QR Code sekarang super renggang & responsif karena hanya memuat link web pendek! */
               <QRCodeSVG value={downloadUrl} size={160} level="M" />
             ) : (
-              <span className="text-red-500 text-[10px]">
+              <span className="text-red-500 text-[10px] font-bold text-center px-2">
                 QR INITIALIZATION ERROR
               </span>
             )}
