@@ -22,7 +22,8 @@ interface FrameStyleConfig {
 }
 
 export default function Result({ photos = [], config, onReset }: ResultProps) {
-  const [imageBlobUrl, setImageBlobUrl] = useState<string>("");
+  const [downloadUrl, setDownloadUrl] = useState<string>(""); // Menyimpan URL publik Vercel Blob
+  const [previewBase64, setPreviewBase64] = useState<string>(""); // Untuk preview instan di layar laptop
   const [isGenerating, setIsGenerating] = useState<boolean>(true);
 
   const frameConfigs: Record<string, FrameStyleConfig> = {
@@ -58,26 +59,26 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
   };
 
   useEffect(() => {
-    const drawStripCanvas = async () => {
+    const drawAndUploadCanvas = async () => {
       try {
         const canvas = document.createElement("canvas");
-        canvas.width = 540;
-        canvas.height = 960;
+        canvas.width = 400;
+        canvas.height = 720; // Rasio pas 3 foto teratur vertikal
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        // 1. Gambar Background
+        // 1. Gambar Background Frame
         const bgImg = await loadImage(currentFrame.wallpaperPath);
         ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
-        // 2. Gambar Foto-Foto
-        const padding = 24;
-        const gap = 12;
+        // 2. Gambar 3 Kotak Foto Hasil jepretan
+        const padding = 20;
+        const gap = 10;
         const photoW = canvas.width - padding * 2;
-        const photoH = 220;
-        const startY = 60;
+        const photoH = 175;
+        const startY = 40;
 
-        for (let i = 0; i < config.frameCount; i++) {
+        for (let i = 0; i < 3; i++) {
           const currentY = startY + i * (photoH + gap);
 
           ctx.lineWidth = 4;
@@ -118,55 +119,62 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
           }
         }
 
-        // 3. Render Footer Box
-        const footerY = 780;
-        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-        ctx.fillRect(padding, footerY, photoW, 120);
+        // 3. Render Area Footer
+        const footerY = 600;
+        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+        ctx.fillRect(padding, footerY, photoW, 85);
 
-        // 4. Gambar Logo
+        // 4. Gambar Aset Logo
         try {
           const logoImg = await loadImage(currentFrame.logoPath);
-          const logoH = 40;
+          const logoH = 28;
           const logoW = logoImg.width * (logoH / logoImg.height);
           const logoX = (canvas.width - logoW) / 2;
-          ctx.drawImage(logoImg, logoX, footerY + 20, logoW, logoH);
+          ctx.drawImage(logoImg, logoX, footerY + 12, logoW, logoH);
         } catch (e) {
-          console.log("Logo skipped");
+          console.log("Logo asset skipped/not found");
         }
 
-        // 5. Gambar Teks
+        // 5. Cetak Teks Info Booth
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 14px monospace";
+        ctx.font = "bold 11px monospace";
         ctx.textAlign = "center";
-        ctx.fillText("IT CLUB PHOTOBOOTH", canvas.width / 2, footerY + 85);
+        ctx.fillText("IT CLUB PHOTOBOOTH", canvas.width / 2, footerY + 62);
 
-        // FIX FIX SOLUSI UTAMA: Ubah ke blob murni agar string URL-nya sangat pendek!
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const localUrl = URL.createObjectURL(blob);
-            setImageBlobUrl(localUrl); // Hasilnya cuma berupa short string: "blob:http://localhost:3000/..."
-            setIsGenerating(false);
-          }
-        }, "image/png");
+        // 6. Dapatkan Base64 Kompresi Menengah untuk Preview & Payload Ringan
+        const base64Image = canvas.toDataURL("image/jpeg", 0.75);
+        setPreviewBase64(base64Image);
+
+        // 7. Kirim ke API Route /api/upload yang sudah disinkronkan ke Vercel Blob
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: base64Image }),
+        });
+
+        const resData = await response.json();
+
+        if (resData.url) {
+          setDownloadUrl(resData.url); // Link publik berformat https://...
+        } else {
+          throw new Error("Gagal mendapatkan link penyimpanan cloud");
+        }
+
+        setIsGenerating(false);
       } catch (err) {
-        console.error("Gagal menggambar:", err);
+        console.error("Proses pembuatan/unggah strip gagal:", err);
         setIsGenerating(false);
       }
     };
 
-    drawStripCanvas();
-
-    // Bersihkan memori object URL kalau komponen di-unmount
-    return () => {
-      if (imageBlobUrl) URL.revokeObjectURL(imageBlobUrl);
-    };
+    drawAndUploadCanvas();
   }, [config, photos]);
 
   const downloadImage = () => {
-    if (!imageBlobUrl) return;
+    if (!previewBase64) return;
     const link = document.createElement("a");
-    link.download = `spark-booth-${config.frameStyle}.png`;
-    link.href = imageBlobUrl;
+    link.download = `spark-booth-${config.frameStyle}.jpg`;
+    link.href = previewBase64; // Download instan lokal via mesin utama booth
     link.click();
   };
 
@@ -174,7 +182,7 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
     <div className="h-screen w-screen bg-[#030307] flex flex-col justify-start py-6 px-8 select-none font-retro relative overflow-hidden">
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f1f38_1px,transparent_1px),linear-gradient(to_bottom,#1f1f38_1px,transparent_1px)] bg-[size:50px_50px] opacity-10 pointer-events-none z-0" />
 
-      {/* Header */}
+      {/* Judul Stage */}
       <div className="text-center z-10 mb-4 flex-none">
         <h2 className="text-xl md:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-arcade-blue to-[#00E5FF]">
           YOUR MASTERPIECE!
@@ -184,48 +192,50 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
         </p>
       </div>
 
-      {/* Main Content */}
+      {/* Main Layout Area */}
       <div className="max-w-5xl w-full mx-auto flex flex-col md:flex-row gap-12 items-stretch justify-center z-10 overflow-hidden flex-1 pb-24">
-        {/* SISI KIRI: PANEL QR CODE */}
+        {/* PANEL KIRI: QR CODE HANDLER */}
         <div className="flex-1 flex flex-col items-center justify-center bg-black/30 border border-gray-800 rounded-lg p-6 min-w-0 max-h-[55vh]">
           <p className="text-[11px] text-arcade-magenta tracking-wider mb-4 text-center">
             {isGenerating
-              ? "// PREPARING QR CODE..."
-              : "// SCAN QR TO SAVE DIRECTLY"}
+              ? "// UPLOADING TO STORAGE..."
+              : "// SCAN QR TO DOWNLOAD"}
           </p>
           <div className="bg-white p-3 rounded-md shadow-[0_0_20px_rgba(255,255,255,0.1)] mb-4 flex items-center justify-center min-w-[174px] min-h-[174px]">
             {isGenerating ? (
-              <div className="w-[150px] h-[150px] bg-neutral-950 flex items-center justify-center text-[10px] text-arcade-blue font-mono animate-pulse rounded">
-                GENERATING...
+              <div className="w-[150px] h-[150px] bg-neutral-950 flex items-center justify-center text-[10px] text-arcade-blue font-mono animate-pulse rounded text-center px-4">
+                GENERATING CLOUD LINK...
               </div>
-            ) : imageBlobUrl ? (
-              /* URL.createObjectURL aman masuk ke QR karena pendek banget */
-              <QRCodeSVG value={imageBlobUrl} size={150} level="M" />
+            ) : downloadUrl ? (
+              /* QR Code sekarang super renggang & responsif karena hanya memuat link web pendek! */
+              <QRCodeSVG value={downloadUrl} size={160} level="M" />
             ) : (
-              <span className="text-red-500 text-[10px]">QR ERROR</span>
+              <span className="text-red-500 text-[10px]">
+                QR INITIALIZATION ERROR
+              </span>
             )}
           </div>
           <p className="text-[9px] text-gray-400 font-mono text-center max-w-xs">
             {isGenerating
-              ? "Sedang memproses tautan gambar..."
-              : "Scan langsung menggunakan HP untuk membuka dan mengunduh berkas strip foto secara instan."}
+              ? "Menyinkronkan data biner dengan server storage Vercel..."
+              : "Scan QR Code menggunakan smartphone pengunjung untuk menyimpan file cetak asli langsung ke perangkat mereka."}
           </p>
         </div>
 
-        {/* SISI KANAN: PREVIEW FRAME STRIP */}
+        {/* PANEL KANAN: PREVIEW HASIL KANVAS STRIP */}
         <div className="flex-none flex flex-col items-center justify-start w-72">
           <p className="text-[9px] text-gray-500 mb-2 tracking-widest font-mono flex-none">
             // FINAL_IMAGE_PREVIEW
           </p>
 
           <div className="relative h-[55vh] aspect-[375/666] bg-black border border-white/10 rounded-md overflow-hidden z-20 flex items-center justify-center shadow-[0_0_30px_rgba(0,229,255,0.15)]">
-            {isGenerating ? (
+            {isGenerating && !previewBase64 ? (
               <div className="text-[11px] text-gray-500 font-mono animate-pulse">
-                RENDERING PREVIEW...
+                RENDERING LAYOUT...
               </div>
             ) : (
               <img
-                src={imageBlobUrl}
+                src={previewBase64}
                 alt="Final Photobooth Strip"
                 className="w-full h-full object-contain"
               />
@@ -234,7 +244,7 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
         </div>
       </div>
 
-      {/* Navigasi Footer */}
+      {/* Navigasi Control Menu Bottom */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-xl w-full grid grid-cols-2 gap-6 text-[11px] z-30 px-8">
         <button
           onClick={onReset}
@@ -248,10 +258,10 @@ export default function Result({ photos = [], config, onReset }: ResultProps) {
           className={`border-2 border-arcade-magenta text-white py-3.5 font-bold tracking-wider transition-all text-center cursor-pointer ${
             isGenerating
               ? "opacity-50 bg-neutral-800 border-neutral-700 cursor-not-allowed"
-              : "bg-arcade-magenta/20 hover:bg-arcade-magenta hover:text-black hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+              : "bg-arcade-magenta/20 hover:bg-arcade-magenta hover:text-black hover:shadow-[0_0_20px_rgba(255,0,255,0.2)]"
           }`}
         >
-          {isGenerating ? "PROCESSING..." : "DOWNLOAD IMAGE >"}
+          {isGenerating ? "SAVING..." : "DOWNLOAD IMAGE >"}
         </button>
       </div>
     </div>
