@@ -35,17 +35,17 @@ export async function POST(request: Request) {
       success: true,
       url: downloadUrl,
     });
-  } catch (error) {
-    console.error("UPLOAD ERROR:", error);
+  } catch (error: any) {
+  console.error("UPLOAD ERROR:", error);
 
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Upload gagal",
-      },
-      {
-        status: 500,
-      },
-    );
-  }
+  return NextResponse.json(
+    {
+      success: false,
+      error: error?.message || String(error),
+      stack: process.env.NODE_ENV === "development" ? error?.stack : undefined,
+    },
+    {
+      status: 500,
+    },
+  );
 }
